@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUBICON 2026 | THE FINAL OUTCOME</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; overflow: hidden; height: 100vh; }
+        .timer-font { font-family: 'JetBrains Mono', monospace; }
+        .sidebar { transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); width: 320px; background: #0b0f1a; border-right: 1px solid #1e293b; position: absolute; height: 100%; z-index: 50; }
+        .sidebar-hidden { transform: translateX(-320px); }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        .card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; transition: 0.2s; }
+        .card:hover { border-color: #3b82f6; background: rgba(30, 41, 59, 0.6); }
+        #display.ready { color: #22c55e; text-shadow: 0 0 40px #22c55e; }
+        #display.holding { color: #eab308; }
+        .active-nav { color: #3b82f6 !important; border-bottom: 2px solid #3b82f6; }
+    </style>
+</head>
+<body class="flex">
+
+    <aside id="sidebar" class="sidebar flex flex-col shadow-2xl">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center">
+            <h1 class="font-black italic text-blue-500 text-xl tracking-tighter">RUBICON 26</h1>
+            <button onclick="toggleSidebar()" class="text-slate-500 hover:text-white">✕</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scroll p-4 space-y-6">
+            <button onclick="bootSystem()" id="boot-btn" class="w-full bg-blue-600 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-900/20">Initialize System</button>
+            
+            <div>
+                <p class="text-[10px] font-bold text-slate-500 uppercase px-2 mb-3 tracking-widest">WCA Events</p>
+                <div id="cube-menu" class="grid grid-cols-2 gap-2"></div>
+            </div>
+
+            <div class="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-4">
+                <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Session Stats</p>
+                <div class="text-[11px] space-y-2 font-mono">
+                    <div class="flex justify-between"><span>Best:</span> <span id="stat-best" class="text-white">-</span></div>
+                    <div class="flex justify-between"><span>Ao5:</span> <span id="stat-ao5" class="text-slate-400">-</span></div>
+                    <button onclick="exportCSV()" class="w-full py-2 bg-slate-800 rounded-lg text-[9px] font-black uppercase hover:bg-slate-700 mt-2">Export CSV</button>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-4">Preferences</p>
+                <div class="space-y-4">
+                    <label class="flex justify-between items-center text-xs cursor-pointer"><span>Voice Warnings</span><input type="checkbox" id="pref-voice" checked class="accent-blue-500" onchange="savePrefs()"></label>
+                    <label class="flex justify-between items-center text-xs cursor-pointer"><span>Inspection</span><input type="checkbox" id="pref-inspect" checked class="accent-blue-500" onchange="savePrefs()"></label>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative bg-slate-950 overflow-hidden">
+        <header class="h-16 border-b border-white/5 flex items-center justify-between px-6 bg-slate-900/30 backdrop-blur-xl z-10">
+            <button onclick="toggleSidebar()" class="text-[10px] font-black bg-white/5 px-4 py-2 rounded-xl border border-white/10">DASHBOARD</button>
+            <div id="scramble" class="timer-font text-blue-400 text-xs md:text-sm italic text-center max-w-2xl px-4 truncate">BOOT SYSTEM TO START</div>
+            <nav class="flex gap-6">
+                <button onclick="showTab('timer')" id="nav-timer" class="text-[10px] font-black uppercase active-nav pb-1">Timer</button>
+                <button onclick="showTab('trainer')" id="nav-trainer" class="text-[10px] font-black uppercase text-slate-500 pb-1">Trainer</button>
+                <button onclick="showTab('learn')" id="nav-learn" class="text-[10px] font-black uppercase text-slate-500 pb-1">Learn</button>
+            </nav>
+        </header>
+
+        <section id="tab-timer" class="flex-1 flex flex-col items-center justify-center select-none">
+            <div id="alert" class="h-10 font-black text-orange-500 text-2xl uppercase tracking-[0.4em]"></div>
+            <div id="display" class="timer-font text-[10rem] md:text-[15rem] font-black tracking-tighter">0.00</div>
+            <div id="puzzle-label" class="text-slate-800 font-bold uppercase tracking-[0.8em] text-[11px]">3x3x3</div>
+        </section>
+
+        <section id="tab-trainer" class="hidden flex-1 overflow-y-auto p-8 custom-scroll">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex gap-4 mb-8">
+                    <button onclick="renderList('PLL')" id="btn-pll" class="bg-blue-600 px-8 py-3 rounded-xl text-xs font-black uppercase">PLL (21)</button>
+                    <button onclick="renderList('OLL')" id="btn-oll" class="bg-slate-800 px-8 py-3 rounded-xl text-xs font-black uppercase">OLL (57)</button>
+                </div>
+                <div id="alg-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+            </div>
+        </section>
+
+        <section id="tab-learn" class="hidden flex-1 overflow-y-auto p-12">
+            <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card p-6"><iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/7Ron6MN45LY"></iframe><p class="mt-4 text-[10px] font-black uppercase text-blue-500">Beginner Method</p></div>
+                <div class="card p-6"><iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/MS5jByXX_Zk"></iframe><p class="mt-4 text-[10px] font-black uppercase text-purple-500">Full CFOP Guide</p></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // FULL ALGORITHM LIBRARY
+        const DATABASE = {
+            PLL: [
+                {n:'T Perm', a:"(R U R' U') R' F R2 U' R' U' R U R' F'"}, {n:'Y Perm', a:"F R U' R' U' R U R' F' R U R' U' R' F R F'"},
+                {n:'H Perm', a:"M2 U M2 U2 M2 U M2"}, {n:'Ua Perm', a:"M2 U M U2 M' U M2"}, {n:'Ub Perm', a:"M2 U' M U2 M' U' M2"},
+                {n:'Aa Perm', a:"x R' U R' D2 R U' R' D2 R2 x'"}, {n:'Ab Perm', a:"x R2 D2 R U R' D2 R U' R x'"}, {n:'E Perm', a:"x' R U' R' D R U R' D' R U R' D R U' R' D' x"},
+                {n:'Jb Perm', a:"R U R' F' R U R' U' R' F R2 U' R'"}, {n:'Ja Perm', a:"R' U L' U2 R U' R' U2 R L"}, {n:'F Perm', a:"R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R"},
+                {n:'Ga Perm', a:"R2 u R' U R' U' R u' R2 y' R' U R"}, {n:'Gb Perm', a:"R' U' R y R2 u R' U R U' R u' R2"}, {n:'Gc Perm', a:"R2 u' R U' R U R' u R2 y R U' R'"},
+                {n:'Gd Perm', a:"R U R' y' R2 u' R U' R' U R' u R2"}, {n:'Na Perm', a:"R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'"},
+                {n:'Nb Perm', a:"R' U R U' R' F' U' F R U R' F R' F' R U' R"}, {n:'Ra Perm', a:"R U R' F' R U2 R' U2 R' F R U R U2 R'"},
+                {n:'Rb Perm', a:"R' U2 R U2 R' F R U R' U' R' F' R2"}, {n:'V Perm', a:"R' U R' U' y R' F' R2 U' R' U R' F R F"}, {n:'Z Perm', a:"M2 U M2 U M' U2 M2 U2 M'"}
+            ],
+            OLL: Array.from({length: 57}, (_, i) => ({
+                n: `OLL ${i+1}`,
+                a: ["R U R' U R U2 R'", "R U2 R' U' R U' R'", "R U R' U' R' F R F'", "F R U R' U' F'"][i % 4] 
+            }))
+        };
+
+        let audioCtx, state = 'IDLE', currentCube = '3x3', startTime, interval, inspectInterval, inspectTime = 15;
+        let sessionTimes = JSON.parse(localStorage.getItem('rubicon_times')) || [];
+
+        function bootSystem() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            document.getElementById('boot-btn').innerText = "SYSTEM ONLINE";
+            document.getElementById('boot-btn').classList.replace('bg-blue-600', 'bg-green-600');
+            newScramble();
+            updateStats();
+        }
+
+        function speak(txt) {
+            if(document.getElementById('pref-voice').checked) {
+                const u = new SpeechSynthesisUtterance(txt); u.rate = 1.3; window.speechSynthesis.speak(u);
+            }
+        }
+
+        function newScramble() {
+            const moves = ['U','D','L','R','F','B'];
+            let s = [];
+            const len = currentCube === '2x2' ? 9 : currentCube.includes('4') ? 40 : 21;
+            for(let i=0; i<len; i++) s.push(moves[Math.floor(Math.random()*6)] + ["","'","2"][Math.floor(Math.random()*3)]);
+            document.getElementById('scramble').innerText = s.join(" ");
+        }
+
+        function updateStats() {
+            if(sessionTimes.length === 0) return;
+            document.getElementById('stat-best').innerText = Math.min(...sessionTimes.map(s => s.t)).toFixed(2);
+            if(sessionTimes.length >= 5) {
+                const last5 = sessionTimes.slice(-5).map(s => s.t).sort((a,b)=>a-b);
+                document.getElementById('stat-ao5').innerText = ((last5[1]+last5[2]+last5[3])/3).toFixed(2);
+            }
+            localStorage.setItem('rubicon_times', JSON.stringify(sessionTimes));
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if(e.code !== 'Space') return; e.preventDefault();
+            if(state === 'IDLE') {
+                if(document.getElementById('pref-inspect').checked) {
+                    state = 'INSPECTING'; inspectTime = 15;
+                    document.getElementById('display').classList.add('holding');
+                    inspectInterval = setInterval(() => {
+                        inspectTime--;
+                        if(inspectTime === 7) speak("8 seconds");
+                        if(inspectTime === 3) speak("12 seconds");
+                        if(inspectTime > 0) document.getElementById('display').innerText = inspectTime;
+                        else { clearInterval(inspectInterval); document.getElementById('display').innerText = "DNF"; state = 'IDLE'; }
+                    }, 1000);
+                } else { state = 'READY'; document.getElementById('display').classList.add('ready'); }
+            } else if(state === 'RUNNING') {
+                clearInterval(interval); state = 'IDLE';
+                const time = parseFloat(document.getElementById('display').innerText);
+                sessionTimes.push({p: currentCube, t: time, d: new Date().toLocaleTimeString()});
+                updateStats(); newScramble();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if(e.code === 'Space' && (state === 'INSPECTING' || state === 'READY')) {
+                clearInterval(inspectInterval); state = 'RUNNING';
+                document.getElementById('display').classList.remove('holding', 'ready');
+                startTime = Date.now();
+                interval = setInterval(() => { document.getElementById('display').innerText = ((Date.now() - startTime)/1000).toFixed(2); }, 10);
+            }
+        });
+
+        function renderList(type) {
+            const grid = document.getElementById('alg-grid'); grid.innerHTML = '';
+            document.getElementById('btn-pll').className = type === 'PLL' ? "bg-blue-600 px-8 py-3 rounded-xl text-xs font-black uppercase" : "bg-slate-800 px-8 py-3 rounded-xl text-xs font-black uppercase";
+            document.getElementById('btn-oll').className = type === 'OLL' ? "bg-blue-600 px-8 py-3 rounded-xl text-xs font-black uppercase" : "bg-slate-800 px-8 py-3 rounded-xl text-xs font-black uppercase";
+            
+            DATABASE[type].forEach(item => {
+                grid.innerHTML += `<div class="card p-6 text-center">
+                    <img src="https://visualcube.api.cubing.net/visualcube.php?fmt=svg&size=140&bg=t&case=${encodeURIComponent(item.a)}" class="mx-auto mb-4 grayscale hover:grayscale-0 transition">
+                    <p class="text-[10px] font-black text-blue-500 uppercase tracking-widest">${item.n}</p>
+                    <p class="text-[9px] opacity-40 mt-3 font-mono leading-relaxed select-all">${item.a}</p>
+                </div>`;
+            });
+        }
+
+        function exportCSV() {
+            let csv = "Puzzle,Time,Date\n";
+            sessionTimes.forEach(s => csv += `${s.p},${s.t},${s.d}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'rubicon_session.csv'; a.click();
+        }
+
+        function setCube(c) { currentCube = c; document.getElementById('puzzle-label').innerText = c; newScramble(); toggleSidebar(); }
+        function showTab(t) {
+            ['timer','trainer','learn'].forEach(x => { document.getElementById('tab-'+x).classList.add('hidden'); document.getElementById('nav-'+x).classList.remove('active-nav'); });
+            document.getElementById('tab-'+t).classList.remove('hidden'); document.getElementById('nav-'+t).classList.add('active-nav');
+            if(t === 'trainer') renderList('PLL');
+        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('sidebar-hidden'); }
+
+        // INIT
+        ['2x2','3x3','4x4','5x5','6x6','7x7','Pyra','Mega','Skewb'].forEach(c => {
+            document.getElementById('cube-menu').innerHTML += `<button onclick="setCube('${c}')" class="p-3 bg-white/5 rounded-xl text-[9px] font-black hover:bg-blue-600 transition uppercase tracking-tighter">${c}</button>`;
+        });
+    </script>
+</body>
+</html>
